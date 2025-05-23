@@ -1,0 +1,188 @@
+package com.example.tfg;
+
+import android.app.AlertDialog;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
+
+public class TareasListaFragment extends Fragment {
+
+
+    private RecyclerView rv;
+    private TareasAdapter adapter;
+    private List<Tarea> listaTareas;
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
+    private ImageView aniadirTarea;
+
+    @Nullable
+    @Override
+    public View onCreateView(
+            @NonNull LayoutInflater inflater,
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState
+    ) {
+        FirebaseApp.initializeApp(requireContext());
+        return inflater.inflate(R.layout.activity_lista_tareas, container, false);
+    }
+
+    @Override
+    public void onViewCreated(
+            @NonNull View view, @Nullable Bundle savedInstanceState
+    ) {
+        super.onViewCreated(view, savedInstanceState);
+
+        rv = view.findViewById(R.id.recyclerView);
+        rv.setLayoutManager(new LinearLayoutManager(getContext()));
+        listaTareas = new ArrayList<>();
+        adapter = new TareasAdapter(getContext(), listaTareas);
+        rv.setAdapter(adapter);
+        aniadirTarea = view.findViewById(R.id.aniadirTareaBoton);
+        aniadirTarea.setOnClickListener(v -> mostrarDialogoNuevaTarea());
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(getContext(), "No hay usuario logueado", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        cargarTareasDeFirestore();
+    }
+
+    private void cargarTareasDeFirestore() {
+        String uid = mAuth.getCurrentUser().getUid();
+        db.collection("usuarios")
+                .document(uid)
+                .collection("tareas")
+                .get()
+                .addOnSuccessListener(qsnap -> {
+                    listaTareas.clear();
+                    for (QueryDocumentSnapshot doc : qsnap) {
+                        Tarea t = doc.toObject(Tarea.class);
+                        t.setId(doc.getId());
+                        listaTareas.add(t);
+                    }
+                    adapter.notifyDataSetChanged();
+                })
+                .addOnFailureListener(e -> {
+
+                    Toast.makeText(getContext(),
+                            "Error cargando tareas: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private void mostrarDialogoNuevaTarea() {
+        View dialogView = LayoutInflater.from(getContext())
+                .inflate(R.layout.dialog_nueva_tarea, null);
+
+        EditText etTitulo = dialogView.findViewById(R.id.etTitulo);
+        EditText etFecha = dialogView.findViewById(R.id.etFecha);
+        EditText etHora = dialogView.findViewById(R.id.etHora);
+        Button btnAceptar = dialogView.findViewById(R.id.btnAceptar);
+
+        AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setTitle("Nueva tarea")
+                .setView(dialogView)
+                .create();
+
+        btnAceptar.setOnClickListener(v -> {
+            String titulo = etTitulo.getText().toString().trim();
+            String fecha = etFecha.getText().toString().trim();
+            String hora = etHora.getText().toString().trim();
+
+            if (titulo.isEmpty() || fecha.isEmpty() || hora.isEmpty()) {
+                Toast.makeText(getContext(), "Completa todos los campos", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!esFechaValida(fecha)) {
+                Toast.makeText(getContext(), "Formato de fecha incorrecto (dd/MM/yyyy)", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!esHoraValida(hora)) {
+                Toast.makeText(getContext(), "Formato de hora incorrecto (HH:mm)", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            dialog.dismiss();
+            guardarTareaEnFirestore(titulo, fecha, hora);
+        });
+
+        dialog.show();
+    }
+
+    private void guardarTareaEnFirestore(String titulo, String fecha, String hora) {
+        String uid = mAuth.getCurrentUser().getUid();
+        Tarea nuevaTarea = new Tarea();
+        nuevaTarea.setTitulo(titulo);
+        nuevaTarea.setCorreoUsuario(mAuth.getCurrentUser().getEmail());
+        nuevaTarea.setFechaLimite(fecha);
+        nuevaTarea.setHoraLimite(hora);
+
+        db.collection("usuarios")
+                .document(uid)
+                .collection("tareas")
+                .add(nuevaTarea)
+                .addOnSuccessListener(docRef -> {
+                    nuevaTarea.setId(docRef.getId());
+                    listaTareas.add(nuevaTarea);
+                    adapter.notifyItemInserted(listaTareas.size() - 1);
+                    Toast.makeText(getContext(), "Tarea añadida correctamente", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+
+                    Toast.makeText(getContext(),
+                            "Error guardando tarea: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+    }
+
+    private boolean esFechaValida(String fecha) {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        sdf.setLenient(false);
+        try {
+            sdf.parse(fecha);
+            return true;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
+    private boolean esHoraValida(String hora) {
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        sdf.setLenient(false);
+        try {
+            sdf.parse(hora);
+            return true;
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+}
