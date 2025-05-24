@@ -3,15 +3,21 @@ package com.example.tfg;
 import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class SilencioActivity extends AppCompatActivity {
 
@@ -19,7 +25,13 @@ public class SilencioActivity extends AppCompatActivity {
     private Button startButton;
     private CountDownTimer countDownTimer;
     private long timeLeftInMillis = 0;
+    private long tiempoSeleccionado = 0; // <-- Tiempo total elegido por el usuario
     private boolean timerRunning = false;
+    private ImageView salir;
+    private boolean cancelledExternally = false;
+
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +40,10 @@ public class SilencioActivity extends AppCompatActivity {
 
         countdownText = findViewById(R.id.countdownText);
         startButton = findViewById(R.id.button);
+        salir = findViewById(R.id.imageView3);
 
+        db = FirebaseFirestore.getInstance();
+        mAuth = FirebaseAuth.getInstance();
 
         startButton.setOnClickListener(v -> {
             if (!timerRunning) {
@@ -44,11 +59,17 @@ public class SilencioActivity extends AppCompatActivity {
             int importance = NotificationManager.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel("canal_silencio", name, importance);
             channel.setDescription(description);
-
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
         }
 
+        salir.setOnClickListener(v -> {
+            if (timerRunning) {
+                Toast.makeText(this, "No puedes salir cuando está en marcha el cronómetro", Toast.LENGTH_SHORT).show();
+            } else {
+                startActivity(new Intent(this, HomeActivity.class));
+            }
+        });
     }
 
     private void showTimePickerDialog() {
@@ -75,8 +96,8 @@ public class SilencioActivity extends AppCompatActivity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Elige el tiempo (de 5 en 5 minutos)");
         builder.setItems(times, (dialog, which) -> {
-            long selectedMinutes = minutes[which];
-            startCountdown(selectedMinutes * 60 * 1000);
+            tiempoSeleccionado = minutes[which]; // <-- Guardamos tiempo elegido
+            startCountdown(tiempoSeleccionado * 60 * 1000);
         });
         builder.show();
     }
@@ -87,6 +108,7 @@ public class SilencioActivity extends AppCompatActivity {
         }
 
         timerRunning = true;
+        cancelledExternally = false;
         startButton.setText("Cancelar");
 
         countDownTimer = new CountDownTimer(millisInFuture, 1000) {
@@ -101,6 +123,7 @@ public class SilencioActivity extends AppCompatActivity {
                 timerRunning = false;
                 countdownText.setText("¡Tiempo terminado!");
                 startButton.setText("Comenzar");
+                sumarPuntosAFirebase(); // <-- Añadido
             }
         }.start();
     }
@@ -113,7 +136,6 @@ public class SilencioActivity extends AppCompatActivity {
         countdownText.setText("00:00");
         startButton.setText("Comenzar");
 
-        // Mostrar diálogo de cancelación
         new AlertDialog.Builder(this)
                 .setTitle(":(")
                 .setMessage("No completaste el tiempo establecido")
@@ -128,12 +150,23 @@ public class SilencioActivity extends AppCompatActivity {
         countdownText.setText(timeFormatted);
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (countDownTimer != null) {
-            countDownTimer.cancel();
-        }
+    private void sumarPuntosAFirebase() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
+
+        int puntosGanados = (int) ((tiempoSeleccionado / 5) * 3); // 3 puntos por cada 5 minutos
+
+        db.collection("usuarios").document(user.getUid()).get().addOnSuccessListener(documentSnapshot -> {
+            if (documentSnapshot.exists()) {
+                Long puntosActuales = documentSnapshot.getLong("puntos");
+                int nuevosPuntos = (puntosActuales != null ? puntosActuales.intValue() : 0) + puntosGanados;
+
+                db.collection("usuarios").document(user.getUid())
+                        .update("puntos", nuevosPuntos)
+                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "+" + puntosGanados + " puntos por completar el silencio", Toast.LENGTH_LONG).show())
+                        .addOnFailureListener(e -> Toast.makeText(this, "Error al actualizar puntos", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     @Override
@@ -141,14 +174,30 @@ public class SilencioActivity extends AppCompatActivity {
         super.onStop();
 
         if (timerRunning) {
+            cancelledExternally = true;
+            cancelTimer();
             showExitNotification();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (cancelledExternally) {
+            new AlertDialog.Builder(this)
+                    .setTitle(":(")
+                    .setMessage("No completaste el tiempo establecido")
+                    .setPositiveButton("Aceptar", null)
+                    .show();
+            cancelledExternally = false;
         }
     }
 
     private void showExitNotification() {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "canal_silencio")
-                .setSmallIcon(R.drawable.logosilencioscuro) // Usa un icono válido en tu drawable
-                .setContentTitle("Temporizador en pausa")
+                .setSmallIcon(R.drawable.logosilencioscuro)
+                .setContentTitle("Temporizador cancelado")
                 .setContentText("Saliste antes de que terminara el tiempo.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
@@ -156,5 +205,11 @@ public class SilencioActivity extends AppCompatActivity {
         notificationManager.notify(1, builder.build());
     }
 
-
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (countDownTimer != null) {
+            countDownTimer.cancel();
+        }
+    }
 }

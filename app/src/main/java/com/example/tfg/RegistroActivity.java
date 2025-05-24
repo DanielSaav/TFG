@@ -1,7 +1,6 @@
 package com.example.tfg;
 
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -81,6 +80,7 @@ public class RegistroActivity extends AppCompatActivity {
                                             Map<String, Object> userMap = new HashMap<>();
                                             userMap.put("email", email);
                                             userMap.put("nombre", nombre);
+                                            userMap.put("puntos", 0); // Inicializar puntos en 0
 
                                             db.collection("usuarios")
                                                     .document(userId)
