@@ -1,6 +1,8 @@
 package com.example.tfg;
 
 import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.view.View;
@@ -8,6 +10,8 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 
 public class SilencioActivity extends AppCompatActivity {
 
@@ -33,6 +37,18 @@ public class SilencioActivity extends AppCompatActivity {
                 cancelTimer();
             }
         });
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            CharSequence name = "CanalSilencio";
+            String description = "Notificaciones del modo silencio";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel("canal_silencio", name, importance);
+            channel.setDescription(description);
+
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+
     }
 
     private void showTimePickerDialog() {
@@ -119,4 +135,26 @@ public class SilencioActivity extends AppCompatActivity {
             countDownTimer.cancel();
         }
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if (timerRunning) {
+            showExitNotification();
+        }
+    }
+
+    private void showExitNotification() {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "canal_silencio")
+                .setSmallIcon(R.drawable.logosilencioscuro) // Usa un icono válido en tu drawable
+                .setContentTitle("Temporizador en pausa")
+                .setContentText("Saliste antes de que terminara el tiempo.")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        notificationManager.notify(1, builder.build());
+    }
+
+
 }
