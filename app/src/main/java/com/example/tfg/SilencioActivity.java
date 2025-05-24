@@ -94,7 +94,7 @@ public class SilencioActivity extends AppCompatActivity {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Elige el tiempo (de 5 en 5 minutos)");
+        builder.setTitle("Elige el tiempo");
         builder.setItems(times, (dialog, which) -> {
             tiempoSeleccionado = minutes[which]; // <-- Guardamos tiempo elegido
             startCountdown(tiempoSeleccionado * 60 * 1000);
