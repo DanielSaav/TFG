@@ -7,6 +7,9 @@ public class Tarea {
     private String fechaLimite;  // por ejemplo "2025-06-01"
     private String horaLimite;   // por ejemplo "14:30"
     private String completado = "No";
+    private boolean visible = true;
+
+    // getter y setter
 
 
 
@@ -32,7 +35,13 @@ public class Tarea {
     }
     public String getId()               { return id; }
     public void   setId(String id)      { this.id = id; }
+    public boolean isVisible() {
+        return visible;
+    }
 
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
     public String getTitulo()           { return titulo; }
     public void   setTitulo(String t)   { this.titulo = t; }
 

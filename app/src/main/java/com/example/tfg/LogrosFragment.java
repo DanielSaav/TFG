@@ -1,64 +1,65 @@
 package com.example.tfg;
 
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
+import androidx.fragment.app.Fragment;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link LogrosFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
 public class LogrosFragment extends Fragment {
 
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
-    public LogrosFragment() {
-        // Required empty public constructor
-    }
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment LogrosFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static LogrosFragment newInstance(String param1, String param2) {
-        LogrosFragment fragment = new LogrosFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
-    }
+    private TextView tareasCompletadasText;
+    private TextView tareasPendientesText;
+    private FirebaseFirestore db;
+    private FirebaseAuth mAuth;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_logros, container, false);
+        View view = inflater.inflate(R.layout.fragment_logros, container, false);
+
+        tareasCompletadasText = view.findViewById(R.id.textView5);
+        tareasPendientesText = view.findViewById(R.id.textView6);
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+
+        if (mAuth.getCurrentUser() == null) {
+            return view;
+        }
+
+        contarTareas();
+
+        return view;
+    }
+
+    private void contarTareas() {
+        String uid = mAuth.getCurrentUser().getUid();
+
+        // Contar tareas completadas ("Sí")
+        db.collection("usuarios")
+                .document(uid)
+                .collection("tareas")
+                .whereEqualTo("completado", "Sí")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    int completadas = queryDocumentSnapshots.size();
+                    tareasCompletadasText.setText("Tareas Completas: " + completadas);
+                });
+
+        // Contar tareas pendientes ("No")
+        db.collection("usuarios")
+                .document(uid)
+                .collection("tareas")
+                .whereEqualTo("completado", "No")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    int pendientes = queryDocumentSnapshots.size();
+                    tareasPendientesText.setText("Tareas Pendientes: " + pendientes);
+                });
     }
 }

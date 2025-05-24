@@ -1,8 +1,9 @@
 package com.example.tfg;
 
 import android.app.AlertDialog;
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,12 +25,12 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Locale;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 public class TareasListaFragment extends Fragment {
-
 
     private RecyclerView rv;
     private TareasAdapter adapter;
@@ -37,22 +38,17 @@ public class TareasListaFragment extends Fragment {
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private ImageView aniadirTarea;
+    private ImageView eliminarTareasCompletadas;
 
     @Nullable
     @Override
-    public View onCreateView(
-            @NonNull LayoutInflater inflater,
-            @Nullable ViewGroup container,
-            @Nullable Bundle savedInstanceState
-    ) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         FirebaseApp.initializeApp(requireContext());
-        return inflater.inflate(R.layout.activity_lista_tareas, container, false);
+        return inflater.inflate(R.layout.fragment_lista_tareas, container, false);
     }
 
     @Override
-    public void onViewCreated(
-            @NonNull View view, @Nullable Bundle savedInstanceState
-    ) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         rv = view.findViewById(R.id.recyclerView);
@@ -60,8 +56,12 @@ public class TareasListaFragment extends Fragment {
         listaTareas = new ArrayList<>();
         adapter = new TareasAdapter(getContext(), listaTareas);
         rv.setAdapter(adapter);
+
         aniadirTarea = view.findViewById(R.id.aniadirTareaBoton);
+        eliminarTareasCompletadas = view.findViewById(R.id.eliminarTareasCompletadas);
+
         aniadirTarea.setOnClickListener(v -> mostrarDialogoNuevaTarea());
+        eliminarTareasCompletadas.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar());
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -74,11 +74,44 @@ public class TareasListaFragment extends Fragment {
         cargarTareasDeFirestore();
     }
 
+    private void mostrarDialogoConfirmacionEliminar() {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Confirmar eliminación")
+                .setMessage("¿Quieres eliminar todas las tareas completadas de la lista?")
+                .setPositiveButton("Sí", (dialog, which) -> eliminarTareasCompletadas())
+                .setNegativeButton("No", null)
+                .show();
+    }
+
+    private void eliminarTareasCompletadas() {
+        List<Tarea> tareasAEliminar = new ArrayList<>();
+
+        // Identificar tareas completadas
+        for (Tarea tarea : listaTareas) {
+            if ("Sí".equalsIgnoreCase(tarea.getCompletado())) {
+                tareasAEliminar.add(tarea);
+            }
+        }
+
+        if (tareasAEliminar.isEmpty()) {
+            Toast.makeText(getContext(), "No hay tareas completadas para ocultar", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Solo eliminamos del RecyclerView, no de Firebase
+        listaTareas.removeAll(tareasAEliminar);
+        adapter.notifyDataSetChanged();
+
+        Toast.makeText(getContext(),
+                tareasAEliminar.size() + " tareas completadas ocultadas",
+                Toast.LENGTH_SHORT).show();
+    }
     private void cargarTareasDeFirestore() {
         String uid = mAuth.getCurrentUser().getUid();
         db.collection("usuarios")
                 .document(uid)
                 .collection("tareas")
+                .whereEqualTo("completado", "No") // Solo cargar tareas no completadas
                 .get()
                 .addOnSuccessListener(qsnap -> {
                     listaTareas.clear();
@@ -90,7 +123,6 @@ public class TareasListaFragment extends Fragment {
                     adapter.notifyDataSetChanged();
                 })
                 .addOnFailureListener(e -> {
-
                     Toast.makeText(getContext(),
                             "Error cargando tareas: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();
@@ -105,6 +137,40 @@ public class TareasListaFragment extends Fragment {
         EditText etFecha = dialogView.findViewById(R.id.etFecha);
         EditText etHora = dialogView.findViewById(R.id.etHora);
         Button btnAceptar = dialogView.findViewById(R.id.btnAceptar);
+
+        etFecha.setFocusable(false);
+        etHora.setFocusable(false);
+
+        etFecha.setOnClickListener(v -> {
+            Calendar calendario = Calendar.getInstance();
+            int anio = calendario.get(Calendar.YEAR);
+            int mes = calendario.get(Calendar.MONTH);
+            int dia = calendario.get(Calendar.DAY_OF_MONTH);
+
+            new DatePickerDialog(
+                    getContext(),
+                    (view, year, month, dayOfMonth) -> {
+                        String fechaSeleccionada = String.format(Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year);
+                        etFecha.setText(fechaSeleccionada);
+                    },
+                    anio, mes, dia
+            ).show();
+        });
+
+        etHora.setOnClickListener(v -> {
+            Calendar calendario = Calendar.getInstance();
+            int hora = calendario.get(Calendar.HOUR_OF_DAY);
+            int minuto = calendario.get(Calendar.MINUTE);
+
+            new TimePickerDialog(
+                    getContext(),
+                    (view, hourOfDay, minute) -> {
+                        String horaSeleccionada = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute);
+                        etHora.setText(horaSeleccionada);
+                    },
+                    hora, minuto, true
+            ).show();
+        });
 
         AlertDialog dialog = new AlertDialog.Builder(getContext())
                 .setTitle("Nueva tarea")
@@ -145,6 +211,7 @@ public class TareasListaFragment extends Fragment {
         nuevaTarea.setCorreoUsuario(mAuth.getCurrentUser().getEmail());
         nuevaTarea.setFechaLimite(fecha);
         nuevaTarea.setHoraLimite(hora);
+        nuevaTarea.setCompletado("No");
 
         db.collection("usuarios")
                 .document(uid)
@@ -157,7 +224,6 @@ public class TareasListaFragment extends Fragment {
                     Toast.makeText(getContext(), "Tarea añadida correctamente", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
-
                     Toast.makeText(getContext(),
                             "Error guardando tarea: " + e.getMessage(),
                             Toast.LENGTH_LONG).show();

@@ -14,17 +14,19 @@
 
     <EditText
         android:id="@+id/etFecha"
-        android:hint="Fecha (dd/mm/aaaa)"
-        android:inputType="date"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:hint="Fecha (dd/MM/yyyy)"
+        android:focusable="false"
+        android:inputType="none" />
 
     <EditText
         android:id="@+id/etHora"
-        android:hint="Hora (hh:mm)"
-        android:inputType="time"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:hint="Hora (HH:mm)"
+        android:focusable="false"
+        android:inputType="none" />
 
     <Button
         android:id="@+id/btnAceptar"

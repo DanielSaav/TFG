@@ -5,11 +5,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.Toast;
+
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -20,6 +24,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 public class HomeActivity extends AppCompatActivity {
 
     private BottomNavigationView bottomNavigationView;
+
+   private Toolbar toolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +42,11 @@ public class HomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
 
+        // Inicializar el Toolbar PRIMERO
+        toolbar = findViewById(R.id.materialToolbar);
+        setSupportActionBar(toolbar); // Esto es crucial para que funcione el menú
+
+        // Resto del código...
         String fragmentActual = prefs.getString("fragment_actual", "");
 
         if (savedInstanceState == null) {
@@ -44,7 +55,7 @@ public class HomeActivity extends AppCompatActivity {
                 fragmentInicial = new AjustesFragment();
                 prefs.edit().remove("fragment_actual").apply();
             } else {
-                fragmentInicial = new TareasListaFragment(); // 👈 Este es el fragment que se carga por defecto
+                fragmentInicial = new TareasListaFragment();
             }
 
             getSupportFragmentManager().beginTransaction()
@@ -58,6 +69,8 @@ public class HomeActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        toolbar = findViewById(R.id.materialToolbar);
 
         bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
@@ -87,20 +100,29 @@ public class HomeActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.toolbar_menu, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.salir) {
-            // Cerrar sesión y volver al LoginActivity
-            startActivity(new Intent(this, LoginActivity.class));
-            finish(); // Evita que pueda volver con el botón atrás
+        int id = item.getItemId();
+
+        if (id == R.id.salir) {
+            Intent intent = new Intent(this, LoginActivity.class);
+            startActivity(intent);
+            Toast.makeText(this, "Saliendo...", Toast.LENGTH_SHORT).show();
+            finish();
+            return true;
+        } else if (id == R.id.modo_silencio) {
+            Intent intent = new Intent(this, SilencioActivity.class);
+            startActivity(intent);
+            finish();
             return true;
         }
+
         return super.onOptionsItemSelected(item);
     }
-
 
 }

@@ -46,35 +46,35 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         holder.tvCorreo.setText("Correo: " + t.getCorreoUsuario());
         holder.tvFechaHora.setText("Límite: " + t.getFechaLimite() + " | " + t.getHoraLimite());
 
-        // Marcar completada
+        // Configurar botón de completado
+        holder.btnCompletar.setText("✓");
         if ("Sí".equalsIgnoreCase(t.getCompletado())) {
             holder.btnCompletar.setEnabled(false);
-            holder.btnCompletar.setText("✓");
+            holder.btnCompletar.setAlpha(0.5f);
         } else {
             holder.btnCompletar.setEnabled(true);
-            holder.btnCompletar.setText("✓");
-
-            holder.btnCompletar.setOnClickListener(v -> {
-                t.setCompletado("Sí");
-                notifyItemChanged(position);
-
-                FirebaseFirestore.getInstance()
-                        .collection("usuarios")
-                        .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                        .collection("tareas")
-                        .document(t.getId())
-                        .update("completado", "Sí")
-                        .addOnSuccessListener(aVoid -> Toast.makeText(ctx, "Tarea completada", Toast.LENGTH_SHORT).show())
-                        .addOnFailureListener(e -> {
-                            Toast.makeText(ctx, "Error", Toast.LENGTH_SHORT).show();
-                            t.setCompletado("No");
-                            notifyItemChanged(position);
-                        });
-            });
+            holder.btnCompletar.setAlpha(1f);
+            holder.btnCompletar.setOnClickListener(v -> marcarComoCompletada(t, position));
         }
 
-        // Al hacer clic sobre el ítem se abre el diálogo de editar/eliminar
         holder.itemView.setOnClickListener(v -> mostrarDialogoEditar(t, position));
+    }
+
+    private void marcarComoCompletada(Tarea tarea, int position) {
+        FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                .collection("tareas")
+                .document(tarea.getId())
+                .update("completado", "Sí")
+                .addOnSuccessListener(aVoid -> {
+                    tarea.setCompletado("Sí");
+                    notifyItemChanged(position);
+                    Toast.makeText(ctx, "Tarea completada", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(ctx, "Error al completar tarea", Toast.LENGTH_SHORT).show();
+                });
     }
 
     private void mostrarDialogoEditar(Tarea tarea, int position) {

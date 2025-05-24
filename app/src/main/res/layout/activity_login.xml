@@ -55,7 +55,22 @@
         app:layout_constraintVertical_bias="0.718" />
 
     <TextView
-        android:id="@+id/textViewRegister"
+        android:id="@+id/olvidarContrasenia"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:focusable="true"
+        android:text="¿Has olvidado la contraseña?"
+        android:textColor="@android:color/holo_blue_dark"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.864" />
+
+    <TextView
+        android:id="@+id/textViewRegister2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clickable="true"

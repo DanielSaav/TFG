@@ -8,6 +8,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.FirebaseApp;
@@ -20,7 +21,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private EditText editTextEmail, editTextClave;
     private Button buttonLogin;
-    private TextView registrarse;
+    private TextView registrarse, olvidarContrasenia;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
@@ -31,13 +32,16 @@ public class LoginActivity extends AppCompatActivity {
         FirebaseApp.initializeApp(this);
         setContentView(R.layout.activity_login);
 
-        editTextEmail = findViewById(R.id.editTextUsername); // Email
-        editTextClave = findViewById(R.id.editTextPassword); // Contraseña
+        editTextEmail = findViewById(R.id.editTextUsername);
+        editTextClave = findViewById(R.id.editTextPassword);
         buttonLogin = findViewById(R.id.buttonLogin);
-        registrarse = findViewById(R.id.textViewRegister);
+        registrarse = findViewById(R.id.textViewRegister2);
+        olvidarContrasenia = findViewById(R.id.olvidarContrasenia);
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+
+        olvidarContrasenia.setOnClickListener(v -> showPasswordResetDialog());
 
         registrarse.setOnClickListener(v ->
                 startActivity(new Intent(LoginActivity.this, RegistroActivity.class))
@@ -55,7 +59,6 @@ public class LoginActivity extends AppCompatActivity {
             mAuth.signInWithEmailAndPassword(email, clave)
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
-                            // Borrar el fragmento anterior guardado (como "ajustes")
                             getSharedPreferences("modo_tema", Context.MODE_PRIVATE)
                                     .edit()
                                     .remove("fragment_actual")
@@ -66,7 +69,6 @@ public class LoginActivity extends AppCompatActivity {
                             startActivity(intent);
                             finish();
                         } else {
-                            // Manejo de errores específicos
                             try {
                                 throw task.getException();
                             } catch (FirebaseAuthInvalidUserException e) {
@@ -79,5 +81,49 @@ public class LoginActivity extends AppCompatActivity {
                         }
                     });
         });
+    }
+
+    private void showPasswordResetDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Restablecer contraseña");
+
+        final EditText emailInput = new EditText(this);
+        emailInput.setHint("Ingresa tu email registrado");
+        builder.setView(emailInput);
+
+        builder.setPositiveButton("Enviar", (dialog, which) -> {
+            String email = emailInput.getText().toString().trim();
+            if (!email.isEmpty()) {
+                sendPasswordResetEmail(email);
+            } else {
+                Toast.makeText(this, "Debes ingresar un email", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        builder.setNegativeButton("Cancelar", null);
+        builder.show();
+    }
+
+    private void sendPasswordResetEmail(String email) {
+        mAuth.sendPasswordResetEmail(email)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Toast.makeText(this,
+                                "Email de restablecimiento enviado a " + email,
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        try {
+                            throw task.getException();
+                        } catch (FirebaseAuthInvalidUserException e) {
+                            Toast.makeText(this,
+                                    "No existe una cuenta con este email",
+                                    Toast.LENGTH_SHORT).show();
+                        } catch (Exception e) {
+                            Toast.makeText(this,
+                                    "Error al enviar el email: " + e.getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
     }
 }
