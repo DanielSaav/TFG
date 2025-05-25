@@ -33,16 +33,14 @@ import com.google.firebase.storage.StorageReference;
 public class PerfilFragment extends Fragment {
 
     private ImageView imageView;
-    private TextView tvEmail, tvNombre;
+    private TextView tvEmail, tvNombre, tvPuntos;
     private Button cambiarDatos, eliminarCuenta;
     private Uri selectedImageUri;
 
-    // Firebase
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private StorageReference storageRef;
 
-    // Lanzador de selección de imagen
     private final androidx.activity.result.ActivityResultLauncher<Intent> pickImageLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -63,17 +61,15 @@ public class PerfilFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Inicializa Firebase
-        mAuth      = FirebaseAuth.getInstance();
-        db         = FirebaseFirestore.getInstance();
-        storageRef = FirebaseStorage.getInstance()
-                .getReference("fotos_perfil");
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+        storageRef = FirebaseStorage.getInstance().getReference("fotos_perfil");
 
-        // Referencias a vistas
-        imageView      = view.findViewById(R.id.imageView);
-        tvEmail        = view.findViewById(R.id.textView);
-        tvNombre       = view.findViewById(R.id.textView2);
-        cambiarDatos   = view.findViewById(R.id.cambiarDatos);
+        imageView = view.findViewById(R.id.imageView);
+        tvEmail = view.findViewById(R.id.textView);
+        tvNombre = view.findViewById(R.id.textView2);
+        tvPuntos = view.findViewById(R.id.textView9);
+        cambiarDatos = view.findViewById(R.id.cambiarDatos);
         eliminarCuenta = view.findViewById(R.id.eliminarCuenta);
 
         imageView.setOnClickListener(v -> openGallery());
@@ -81,13 +77,10 @@ public class PerfilFragment extends Fragment {
         cambiarDatos.setOnClickListener(v -> showChangeNameDialog());
         eliminarCuenta.setOnClickListener(v -> showDeleteAccountDialog());
 
-        // Carga datos del usuario (foto, email y nombre)
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
-            // email de Auth
             tvEmail.setText("Correo: " + user.getEmail());
 
-            // resto de datos de Firestore
             db.collection("usuarios")
                     .document(user.getUid())
                     .get()
@@ -107,6 +100,7 @@ public class PerfilFragment extends Fragment {
             String nombre = doc.getString("nombre");
             tvNombre.setText(nombre);
         }
+
         if (doc.contains("fotoPerfil")) {
             String url = doc.getString("fotoPerfil");
             if (url != null && !url.isEmpty()) {
@@ -116,6 +110,13 @@ public class PerfilFragment extends Fragment {
                         .transition(DrawableTransitionOptions.withCrossFade())
                         .into(imageView);
             }
+        }
+
+        if (doc.contains("puntos")) {
+            long puntos = doc.getLong("puntos") != null ? doc.getLong("puntos") : 0;
+            tvPuntos.setText(String.valueOf(puntos));
+        } else {
+            tvPuntos.setText("0");
         }
     }
 
@@ -134,6 +135,7 @@ public class PerfilFragment extends Fragment {
                 Toast.makeText(getContext(), "El nombre no puede estar vacío", Toast.LENGTH_SHORT).show();
                 return;
             }
+
             FirebaseUser user = mAuth.getCurrentUser();
             if (user == null) return;
 
@@ -168,17 +170,14 @@ public class PerfilFragment extends Fragment {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) return;
 
-        // Primero borrar el documento en Firestore
         db.collection("usuarios")
                 .document(user.getUid())
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    // Luego borrar la cuenta de Auth
                     user.delete()
                             .addOnSuccessListener(aVoid2 -> {
                                 Toast.makeText(getContext(),
                                         "Cuenta eliminada correctamente", Toast.LENGTH_SHORT).show();
-                                // Vuelve a la pantalla de login
                                 startActivity(new Intent(getActivity(), LoginActivity.class));
                                 getActivity().finish();
                             })
@@ -212,49 +211,8 @@ public class PerfilFragment extends Fragment {
                     .circleCrop()
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(imageView);
-            uploadImageToFirebase();
+            // Aquí va tu función para subir la imagen
+            // uploadImageToFirebase();
         }
-    }
-
-    private void uploadImageToFirebase() {
-        FirebaseUser user = mAuth.getCurrentUser();
-        if (user == null) {
-            Toast.makeText(getContext(), "Usuario no autenticado", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        StorageReference imgRef = storageRef.child(user.getUid() + ".jpg");
-        imgRef.putFile(selectedImageUri)
-                .addOnSuccessListener(taskSnapshot -> {
-                    // Usar el storage del snapshot
-                    taskSnapshot.getStorage().getDownloadUrl()
-                            .addOnSuccessListener(uri -> saveUrlInFirestore(user.getUid(), uri.toString()))
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(getContext(),
-                                            "Error al obtener URL: " + e.getMessage(),
-                                            Toast.LENGTH_SHORT).show());
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(getContext(),
-                                "Error al subir imagen: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show()
-                );
-    }
-
-
-    private void saveUrlInFirestore(String userId, String url) {
-        db.collection("usuarios")
-                .document(userId)
-                .update("fotoPerfil", url)
-                .addOnSuccessListener(aVoid ->
-                        Toast.makeText(getContext(),
-                                "Foto de perfil guardada en Firebase",
-                                Toast.LENGTH_SHORT).show()
-                )
-                .addOnFailureListener(e ->
-                        Toast.makeText(getContext(),
-                                "Error al guardar URL en Firestore: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show()
-                );
     }
 }

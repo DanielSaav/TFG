@@ -46,6 +46,62 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         holder.tvCorreo.setText("Correo: " + t.getCorreoUsuario());
         holder.tvFechaHora.setText("Límite: " + t.getFechaLimite() + " | " + t.getHoraLimite());
 
+        try {
+            String[] fechaPartes = t.getFechaLimite().split("/");
+            String[] horaPartes = t.getHoraLimite().split(":");
+
+            int dia = Integer.parseInt(fechaPartes[0]);
+            int mes = Integer.parseInt(fechaPartes[1]) - 1; // Mes en 0-11
+            int anio = Integer.parseInt(fechaPartes[2]);
+            int hora = Integer.parseInt(horaPartes[0]);
+            int minuto = Integer.parseInt(horaPartes[1]);
+
+            Calendar fechaLimite = Calendar.getInstance();
+            fechaLimite.set(anio, mes, dia, hora, minuto, 0);
+
+            Calendar ahora = Calendar.getInstance();
+
+            boolean fechaLimitePasada = false;
+
+            // Comprobamos si la fecha límite es anterior a hoy
+            Calendar hoyInicio = Calendar.getInstance();
+            hoyInicio.set(Calendar.HOUR_OF_DAY, 0);
+            hoyInicio.set(Calendar.MINUTE, 0);
+            hoyInicio.set(Calendar.SECOND, 0);
+            hoyInicio.set(Calendar.MILLISECOND, 0);
+
+            Calendar hoyFin = Calendar.getInstance();
+            hoyFin.set(Calendar.HOUR_OF_DAY, 23);
+            hoyFin.set(Calendar.MINUTE, 59);
+            hoyFin.set(Calendar.SECOND, 59);
+            hoyFin.set(Calendar.MILLISECOND, 999);
+
+            if (fechaLimite.before(hoyInicio)) {
+                // La fecha límite es anterior a hoy -> ya ha pasado
+                fechaLimitePasada = true;
+            } else if (fechaLimite.after(hoyFin)) {
+                // Fecha límite en el futuro (más tarde que hoy)
+                fechaLimitePasada = false;
+            } else {
+                // Fecha límite es hoy -> comprobamos si hora y minuto pasaron
+                if (fechaLimite.before(ahora)) {
+                    fechaLimitePasada = true;
+                }
+            }
+
+            if (fechaLimitePasada) {
+                // Cambiar fondo a rojo claro
+                holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(R.attr.colorRojo));
+            } else {
+                // Fondo normal
+                holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
+            }
+
+        } catch (Exception e) {
+            // Por si hay error en el parseo, ponemos fondo normal
+            holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
+        }
+
         // Configurar botón de completado
         holder.btnCompletar.setText("✓");
         if ("Sí".equalsIgnoreCase(t.getCompletado())) {
@@ -59,6 +115,7 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
 
         holder.itemView.setOnClickListener(v -> mostrarDialogoEditar(t, position));
     }
+
 
     private void marcarComoCompletada(Tarea tarea, int position) {
         FirebaseFirestore.getInstance()
@@ -93,15 +150,33 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         etFechaHora.setText(tarea.getFechaLimite() + " | " + tarea.getHoraLimite());
 
         etFechaHora.setOnClickListener(v -> {
-            final Calendar c = Calendar.getInstance();
-            DatePickerDialog datePicker = new DatePickerDialog(ctx, (view1, year, month, day) -> {
-                TimePickerDialog timePicker = new TimePickerDialog(ctx, (view2, hour, minute) -> {
-                    String fecha = String.format(Locale.getDefault(), "%02d/%02d/%04d", day, month + 1, year);
-                    String hora = String.format(Locale.getDefault(), "%02d:%02d", hour, minute);
+            final Calendar ahora = Calendar.getInstance();
+
+            DatePickerDialog datePicker = new DatePickerDialog(ctx, (view1, year, month, dayOfMonth) -> {
+                boolean esHoy = ahora.get(Calendar.YEAR) == year &&
+                        ahora.get(Calendar.MONTH) == month &&
+                        ahora.get(Calendar.DAY_OF_MONTH) == dayOfMonth;
+
+                int horaInicial = esHoy ? ahora.get(Calendar.HOUR_OF_DAY) : 0;
+                int minutoInicial = esHoy ? ahora.get(Calendar.MINUTE) : 0;
+
+                TimePickerDialog timePicker = new TimePickerDialog(ctx, (view2, hourOfDay, minute) -> {
+                    if (esHoy && (hourOfDay < ahora.get(Calendar.HOUR_OF_DAY) ||
+                            (hourOfDay == ahora.get(Calendar.HOUR_OF_DAY) && minute < ahora.get(Calendar.MINUTE)))) {
+                        Toast.makeText(ctx, "No puedes seleccionar una hora anterior a la actual", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String fecha = String.format(Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year);
+                    String hora = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, minute);
                     etFechaHora.setText(fecha + " | " + hora);
-                }, c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), true);
+                }, horaInicial, minutoInicial, true);
+
                 timePicker.show();
-            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH));
+
+            }, ahora.get(Calendar.YEAR), ahora.get(Calendar.MONTH), ahora.get(Calendar.DAY_OF_MONTH));
+
+            datePicker.getDatePicker().setMinDate(ahora.getTimeInMillis()); // Impide fechas anteriores
             datePicker.show();
         });
 
@@ -111,21 +186,47 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             String nuevaFecha = partes.length > 0 ? partes[0] : "";
             String nuevaHora = partes.length > 1 ? partes[1] : "";
 
-            FirebaseFirestore.getInstance()
-                    .collection("usuarios")
-                    .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                    .collection("tareas")
-                    .document(tarea.getId())
-                    .update("titulo", nuevoTitulo, "fechaLimite", nuevaFecha, "horaLimite", nuevaHora)
-                    .addOnSuccessListener(aVoid -> {
-                        tarea.setTitulo(nuevoTitulo);
-                        tarea.setFechaLimite(nuevaFecha);
-                        tarea.setHoraLimite(nuevaHora);
-                        notifyItemChanged(position);
-                        Toast.makeText(ctx, "Tarea actualizada", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    })
-                    .addOnFailureListener(e -> Toast.makeText(ctx, "Error al actualizar", Toast.LENGTH_SHORT).show());
+            // Validar que la fecha y hora no sean anteriores a la actual
+            try {
+                String[] fechaPartes = nuevaFecha.split("/");
+                String[] horaPartes = nuevaHora.split(":");
+
+                int dia = Integer.parseInt(fechaPartes[0]);
+                int mes = Integer.parseInt(fechaPartes[1]) - 1; // Mes empieza desde 0
+                int anio = Integer.parseInt(fechaPartes[2]);
+                int hora = Integer.parseInt(horaPartes[0]);
+                int minuto = Integer.parseInt(horaPartes[1]);
+
+                Calendar fechaSeleccionada = Calendar.getInstance();
+                fechaSeleccionada.set(anio, mes, dia, hora, minuto, 0);
+
+                Calendar fechaActual = Calendar.getInstance();
+
+                if (fechaSeleccionada.before(fechaActual)) {
+                    Toast.makeText(ctx, "La fecha y hora no pueden ser anteriores a la actual", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                // Actualizar tarea si la fecha es válida
+                FirebaseFirestore.getInstance()
+                        .collection("usuarios")
+                        .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                        .collection("tareas")
+                        .document(tarea.getId())
+                        .update("titulo", nuevoTitulo, "fechaLimite", nuevaFecha, "horaLimite", nuevaHora)
+                        .addOnSuccessListener(aVoid -> {
+                            tarea.setTitulo(nuevoTitulo);
+                            tarea.setFechaLimite(nuevaFecha);
+                            tarea.setHoraLimite(nuevaHora);
+                            notifyItemChanged(position);
+                            Toast.makeText(ctx, "Tarea actualizada", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                        })
+                        .addOnFailureListener(e -> Toast.makeText(ctx, "Error al actualizar", Toast.LENGTH_SHORT).show());
+
+            } catch (Exception e) {
+                Toast.makeText(ctx, "Fecha u hora no válida", Toast.LENGTH_SHORT).show();
+            }
         });
 
         btnCancelar.setOnClickListener(v -> dialog.dismiss());
@@ -158,12 +259,16 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         TextView tvTitulo, tvCorreo, tvFechaHora;
         Button btnCompletar;
 
+        View rootLayout;
+
         public TareaViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTitulo);
             tvCorreo = itemView.findViewById(R.id.tvCorreo);
             tvFechaHora = itemView.findViewById(R.id.tvFechaHora);
             btnCompletar = itemView.findViewById(R.id.btnCompletar);
+            rootLayout = itemView;  // Aquí usamos el itemView completo para cambiar fondo
         }
+
     }
 }

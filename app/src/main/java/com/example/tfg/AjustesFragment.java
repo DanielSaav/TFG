@@ -76,6 +76,8 @@ public class AjustesFragment extends Fragment {
                 SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("fuente", fuente);
                 editor.apply();
+
+
             }
 
             @Override

@@ -27,6 +27,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -86,7 +87,6 @@ public class TareasListaFragment extends Fragment {
     private void eliminarTareasCompletadas() {
         List<Tarea> tareasAEliminar = new ArrayList<>();
 
-        // Identificar tareas completadas
         for (Tarea tarea : listaTareas) {
             if ("Sí".equalsIgnoreCase(tarea.getCompletado())) {
                 tareasAEliminar.add(tarea);
@@ -98,7 +98,6 @@ public class TareasListaFragment extends Fragment {
             return;
         }
 
-        // Solo eliminamos del RecyclerView, no de Firebase
         listaTareas.removeAll(tareasAEliminar);
         adapter.notifyDataSetChanged();
 
@@ -106,12 +105,13 @@ public class TareasListaFragment extends Fragment {
                 tareasAEliminar.size() + " tareas completadas ocultadas",
                 Toast.LENGTH_SHORT).show();
     }
+
     private void cargarTareasDeFirestore() {
         String uid = mAuth.getCurrentUser().getUid();
         db.collection("usuarios")
                 .document(uid)
                 .collection("tareas")
-                .whereEqualTo("completado", "No") // Solo cargar tareas no completadas
+                .whereEqualTo("completado", "No")
                 .get()
                 .addOnSuccessListener(qsnap -> {
                     listaTareas.clear();
@@ -197,6 +197,11 @@ public class TareasListaFragment extends Fragment {
                 return;
             }
 
+            if (!esFechaHoraValida(fecha, hora)) {
+                Toast.makeText(getContext(), "No puedes poner una fecha y hora anterior a la actual", Toast.LENGTH_LONG).show();
+                return;
+            }
+
             dialog.dismiss();
             guardarTareaEnFirestore(titulo, fecha, hora);
         });
@@ -251,4 +256,37 @@ public class TareasListaFragment extends Fragment {
             return false;
         }
     }
+
+    private boolean esFechaHoraValida(String fecha, String hora) {
+        SimpleDateFormat sdfFecha = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+        SimpleDateFormat sdfHora = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        SimpleDateFormat sdfCompleto = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        sdfFecha.setLenient(false);
+        sdfHora.setLenient(false);
+        sdfCompleto.setLenient(false);
+
+        try {
+            Date fechaSeleccionada = sdfFecha.parse(fecha);
+            Date horaSeleccionada = sdfHora.parse(hora);
+            Date fechaHoraSeleccionada = sdfCompleto.parse(fecha + " " + hora);
+            Date ahora = new Date();
+
+            // Comparar fechas sin tener en cuenta la hora
+            String fechaHoyStr = sdfFecha.format(ahora);
+            String fechaSeleccionadaStr = sdfFecha.format(fechaSeleccionada);
+
+            if (fechaSeleccionadaStr.equals(fechaHoyStr)) {
+                // Si es hoy, la hora debe ser mayor a la actual
+                String horaActualStr = sdfHora.format(ahora);
+                Date horaActual = sdfHora.parse(horaActualStr);
+                return horaSeleccionada != null && horaSeleccionada.after(horaActual);
+            } else {
+                // Si es otro día, solo tiene que ser en el futuro
+                return fechaHoraSeleccionada != null && fechaHoraSeleccionada.after(ahora);
+            }
+        } catch (ParseException e) {
+            return false;
+        }
+    }
+
 }

@@ -1,2 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources> <attr name="logoSilencio" format="reference" /></resources>
+<resources> <attr name="logoSilencio" format="reference" />
+            <attr name="colorRojo" format="reference"/>
+</resources>

@@ -3,6 +3,7 @@
     <style name="Base.Theme.TFG" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorSurface">@color/dark_gray</item>
         <item name="logoSilencio" format="reference">@drawable/logosilencioscuro</item>
+        <item name="colorRojo">@color/maroon</item>
     </style>
 
 </resources>

@@ -5,6 +5,7 @@
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
         <item name="colorSurface">@color/light_gray</item>
         <item name="logoSilencio" format="reference">@drawable/imagesilencioclaro</item>
+        <item name="colorRojo">@color/ligth_red</item>
     </style>
 
     <style name="Theme.TFG" parent="Base.Theme.TFG" />
