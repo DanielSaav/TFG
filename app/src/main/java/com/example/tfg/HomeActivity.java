@@ -1,8 +1,11 @@
 package com.example.tfg;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -96,6 +99,17 @@ public class HomeActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "canal_tareas", "Notificaciones de tareas", NotificationManager.IMPORTANCE_HIGH);
+            channel.setDescription("Canal para tareas fuera de plazo");
+
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
+
+
     }
 
     @Override

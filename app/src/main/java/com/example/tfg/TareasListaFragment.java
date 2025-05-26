@@ -3,6 +3,9 @@ package com.example.tfg;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,6 +18,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,6 +44,7 @@ public class TareasListaFragment extends Fragment {
     private FirebaseAuth mAuth;
     private ImageView aniadirTarea;
     private ImageView eliminarTareasCompletadas;
+    private SharedPreferences sharedPreferences;
 
     @Nullable
     @Override
@@ -51,6 +56,8 @@ public class TareasListaFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        sharedPreferences = requireActivity().getSharedPreferences("modo_tema", Context.MODE_PRIVATE);
 
         rv = view.findViewById(R.id.recyclerView);
         rv.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -75,6 +82,13 @@ public class TareasListaFragment extends Fragment {
         cargarTareasDeFirestore();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Refrescar las tareas cuando el fragmento vuelva a estar visible
+        cargarTareasDeFirestore();
+    }
+
     private void mostrarDialogoConfirmacionEliminar() {
         new AlertDialog.Builder(getContext())
                 .setTitle("Confirmar eliminación")
@@ -94,39 +108,75 @@ public class TareasListaFragment extends Fragment {
         }
 
         if (tareasAEliminar.isEmpty()) {
-            Toast.makeText(getContext(), "No hay tareas completadas para ocultar", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "No hay tareas completadas para eliminar", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Eliminar de Firestore
+        String uid = mAuth.getCurrentUser().getUid();
+        for (Tarea tarea : tareasAEliminar) {
+            db.collection("usuarios")
+                    .document(uid)
+                    .collection("tareas")
+                    .document(tarea.getId())
+                    .delete();
+        }
+
+        // Eliminar de la lista local
         listaTareas.removeAll(tareasAEliminar);
         adapter.notifyDataSetChanged();
 
         Toast.makeText(getContext(),
-                tareasAEliminar.size() + " tareas completadas ocultadas",
+                tareasAEliminar.size() + " tareas completadas eliminadas",
                 Toast.LENGTH_SHORT).show();
     }
 
     private void cargarTareasDeFirestore() {
         String uid = mAuth.getCurrentUser().getUid();
-        db.collection("usuarios")
-                .document(uid)
-                .collection("tareas")
-                .whereEqualTo("completado", "No")
-                .get()
-                .addOnSuccessListener(qsnap -> {
-                    listaTareas.clear();
-                    for (QueryDocumentSnapshot doc : qsnap) {
-                        Tarea t = doc.toObject(Tarea.class);
-                        t.setId(doc.getId());
-                        listaTareas.add(t);
-                    }
-                    adapter.notifyDataSetChanged();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(getContext(),
-                            "Error cargando tareas: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
-                });
+        boolean mostrarCompletadas = sharedPreferences.getBoolean("mostrar_completadas", true);
+
+        if (mostrarCompletadas) {
+            // Cargar todas las tareas
+            db.collection("usuarios")
+                    .document(uid)
+                    .collection("tareas")
+                    .get()
+                    .addOnSuccessListener(qsnap -> {
+                        listaTareas.clear();
+                        for (QueryDocumentSnapshot doc : qsnap) {
+                            Tarea t = doc.toObject(Tarea.class);
+                            t.setId(doc.getId());
+                            listaTareas.add(t);
+                        }
+                        adapter.notifyDataSetChanged();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(),
+                                "Error cargando tareas: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    });
+        } else {
+            // Cargar solo tareas no completadas
+            db.collection("usuarios")
+                    .document(uid)
+                    .collection("tareas")
+                    .whereEqualTo("completado", "No")
+                    .get()
+                    .addOnSuccessListener(qsnap -> {
+                        listaTareas.clear();
+                        for (QueryDocumentSnapshot doc : qsnap) {
+                            Tarea t = doc.toObject(Tarea.class);
+                            t.setId(doc.getId());
+                            listaTareas.add(t);
+                        }
+                        adapter.notifyDataSetChanged();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(getContext(),
+                                "Error cargando tareas: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    });
+        }
     }
 
     private void mostrarDialogoNuevaTarea() {
@@ -288,5 +338,4 @@ public class TareasListaFragment extends Fragment {
             return false;
         }
     }
-
 }

@@ -4,6 +4,8 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,23 +15,36 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewHolder> {
 
     private final List<Tarea> lista;
     private final Context ctx;
 
+    private final Set<String> tareasNotificadas = new HashSet<>();
+
+    private final SharedPreferences sharedPreferences;
+    private final SharedPreferences.Editor editor;
+
+
     public TareasAdapter(Context ctx, List<Tarea> lista) {
         this.ctx = ctx;
         this.lista = lista;
+        this.sharedPreferences = ctx.getSharedPreferences("tareas_notificadas", Context.MODE_PRIVATE);
+        this.editor = sharedPreferences.edit();
+
     }
 
     @NonNull
@@ -38,7 +53,6 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         View v = LayoutInflater.from(ctx).inflate(R.layout.item_tarea, parent, false);
         return new TareaViewHolder(v);
     }
-
     @Override
     public void onBindViewHolder(@NonNull TareaViewHolder holder, int position) {
         Tarea t = lista.get(position);
@@ -63,7 +77,6 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
 
             boolean fechaLimitePasada = false;
 
-            // Comprobamos si la fecha límite es anterior a hoy
             Calendar hoyInicio = Calendar.getInstance();
             hoyInicio.set(Calendar.HOUR_OF_DAY, 0);
             hoyInicio.set(Calendar.MINUTE, 0);
@@ -77,32 +90,42 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             hoyFin.set(Calendar.MILLISECOND, 999);
 
             if (fechaLimite.before(hoyInicio)) {
-                // La fecha límite es anterior a hoy -> ya ha pasado
                 fechaLimitePasada = true;
             } else if (fechaLimite.after(hoyFin)) {
-                // Fecha límite en el futuro (más tarde que hoy)
                 fechaLimitePasada = false;
             } else {
-                // Fecha límite es hoy -> comprobamos si hora y minuto pasaron
                 if (fechaLimite.before(ahora)) {
                     fechaLimitePasada = true;
                 }
             }
 
             if (fechaLimitePasada) {
-                // Cambiar fondo a rojo claro
-                holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(R.attr.colorRojo));
+                // Cambiar fondo a rojo
+                TypedValue typedValue = new TypedValue();
+                Context context = holder.itemView.getContext();
+                context.getTheme().resolveAttribute(R.attr.colorRojo, typedValue, true);
+                holder.rootLayout.setBackgroundColor(typedValue.data);
+
+                // Verificar si ya se notificó
+                boolean yaNotificada = sharedPreferences.getBoolean(t.getTitulo(), false);
+
+                if (!"Sí".equalsIgnoreCase(t.getCompletado()) && !yaNotificada) {
+                    mostrarNotificacion("Tarea fuera de plazo", "La tarea \"" + t.getTitulo() + "\" ha pasado su fecha límite.");
+                    editor.putBoolean(t.getTitulo(), true);  // Marcar como notificada
+                    editor.apply();
+                }
             } else {
-                // Fondo normal
                 holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
             }
 
+
+
         } catch (Exception e) {
-            // Por si hay error en el parseo, ponemos fondo normal
+            // Si hay error, fondo blanco
             holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
         }
 
-        // Configurar botón de completado
+        // Botón completar
         holder.btnCompletar.setText("✓");
         if ("Sí".equalsIgnoreCase(t.getCompletado())) {
             holder.btnCompletar.setEnabled(false);
@@ -113,7 +136,22 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             holder.btnCompletar.setOnClickListener(v -> marcarComoCompletada(t, position));
         }
 
+        // Evento de clic
         holder.itemView.setOnClickListener(v -> mostrarDialogoEditar(t, position));
+    }
+
+
+
+    private void mostrarNotificacion(String titulo, String mensaje) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "canal_tareas")
+                .setSmallIcon(R.drawable.images__3_) // Usa un icono que tengas en res/drawable
+                .setContentTitle(titulo)
+                .setContentText(mensaje)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(ctx);
+        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
     }
 
 

@@ -54,6 +54,9 @@ public class AjustesFragment extends Fragment {
             );
         });
 
+
+
+
         // Configurar el Spinner con el array de fuentes
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 requireContext(),
