@@ -13,6 +13,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Fuente de letra: "
+        android:textSize="20dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.178"
@@ -22,15 +23,45 @@
 
     <Switch
         android:id="@+id/modo_oscuro"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="124dp"
+        android:layout_height="41dp"
+        android:scaleX="1.5"
+        android:scaleY="1.5"
         android:text="Modo claro"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.133"
+        app:layout_constraintHorizontal_bias="0.229"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.485" />
+        app:layout_constraintVertical_bias="0.384" />
+
+    <TextView
+        android:id="@+id/ajustesTitulo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="616dp"
+        android:text="Ajustes"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="parent" />
+
+    <Switch
+        android:id="@+id/mostrarTareasFueraPlazo"
+        android:layout_width="156dp"
+        android:layout_height="45dp"
+        android:scaleX="1.5"
+        android:scaleY="1.5"
+        android:text="Mostrar tareas fuera de plazo"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.188"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.717" />
 
     <Spinner
         android:id="@+id/spinner"
@@ -39,20 +70,24 @@
 
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.616"
+        app:layout_constraintHorizontal_bias="0.664"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.285" />
+        app:layout_constraintVertical_bias="0.292" />
 
     <Switch
         android:id="@+id/mostrarTareasCompletadas"
-        android:layout_width="145dp"
-        android:layout_height="44dp"
-        android:layout_marginStart="36dp"
-        android:layout_marginTop="284dp"
+        android:layout_width="151dp"
+        android:layout_height="50dp"
+        android:scaleX="1.5"
+        android:scaleY="1.5"
         android:text="Mostrar tareas completadas"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.203"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.541" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

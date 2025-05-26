@@ -26,31 +26,15 @@
     <!-- 3. Fecha y hora límite -->
 
     <!-- 4. Botón Completar -->
-    <TextView
-        android:id="@+id/tvCorreo"
-        android:layout_width="261dp"
-        android:layout_height="21dp"
-        android:layout_marginTop="36dp"
-        android:text="Correo: usuario@ejemplo.com"
-        android:textSize="14sp"
-        app:layout_constraintEnd_toEndOf="@id/tvTitulo"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@id/tvTitulo"
-        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tvFechaHora"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
         android:text="Límite: 2025-06-01 | 14:30"
         android:textSize="14sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="@id/tvCorreo"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvCorreo"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/btnCompletar"

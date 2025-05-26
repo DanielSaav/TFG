@@ -1,7 +1,6 @@
 package com.example.tfg;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -54,6 +53,7 @@ public class PerfilFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState
     ) {
+        // Inflamos la vista aquí, sin usar aún imageView ni otras vistas
         return inflater.inflate(R.layout.activity_perfil, container, false);
     }
 
@@ -61,10 +61,7 @@ public class PerfilFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        mAuth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
-        storageRef = FirebaseStorage.getInstance().getReference("fotos_perfil");
-
+        // Inicializamos las vistas ya que la vista está inflada
         imageView = view.findViewById(R.id.imageView);
         tvEmail = view.findViewById(R.id.textView);
         tvNombre = view.findViewById(R.id.textView2);
@@ -72,11 +69,32 @@ public class PerfilFragment extends Fragment {
         cambiarDatos = view.findViewById(R.id.cambiarDatos);
         eliminarCuenta = view.findViewById(R.id.eliminarCuenta);
 
-        imageView.setOnClickListener(v -> openGallery());
+        // Inicializamos Firebase
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+        storageRef = FirebaseStorage.getInstance().getReference("fotos_perfil");
 
+        // Cargar URI guardada si existe y mostrar con Glide
+        String savedUri = requireActivity()
+                .getSharedPreferences("perfil_prefs", getContext().MODE_PRIVATE)
+                .getString("foto_uri", null);
+
+        if (savedUri != null) {
+            Glide.with(this)
+                    .load(Uri.parse(savedUri))
+                    .circleCrop()
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(imageView);
+        } else {
+            imageView.setImageResource(R.drawable.sin_imagen);
+        }
+
+        // Listeners
+        imageView.setOnClickListener(v -> openGallery());
         cambiarDatos.setOnClickListener(v -> showChangeNameDialog());
         eliminarCuenta.setOnClickListener(v -> showDeleteAccountDialog());
 
+        // Cargar datos usuario
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             tvEmail.setText("Correo: " + user.getEmail());
@@ -204,6 +222,7 @@ public class PerfilFragment extends Fragment {
         if (result.getResultCode() != requireActivity().RESULT_OK || result.getData() == null) {
             return;
         }
+
         selectedImageUri = result.getData().getData();
         if (selectedImageUri != null) {
             Glide.with(this)
@@ -211,8 +230,14 @@ public class PerfilFragment extends Fragment {
                     .circleCrop()
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(imageView);
-            // Aquí va tu función para subir la imagen
-            // uploadImageToFirebase();
+
+            requireActivity().getSharedPreferences("perfil_prefs", getContext().MODE_PRIVATE)
+                    .edit()
+                    .putString("foto_uri", selectedImageUri.toString())
+                    .apply();
+
+            // Aquí puedes añadir la subida a Firebase Storage si quieres
         }
     }
+
 }

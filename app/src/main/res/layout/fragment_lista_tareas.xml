@@ -16,17 +16,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageView
-        android:id="@+id/eliminarTareasCompletadas"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
-        android:contentDescription="Eliminar Tareas Completadas"
-        android:src="@drawable/_1giidzizll__ac_uf894_1000_ql80_"
-        app:layout_constraintStart_toEndOf="@id/aniadirTareaBoton"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
         android:layout_width="318dp"

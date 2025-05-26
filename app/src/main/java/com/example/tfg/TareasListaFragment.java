@@ -43,7 +43,6 @@ public class TareasListaFragment extends Fragment {
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
     private ImageView aniadirTarea;
-    private ImageView eliminarTareasCompletadas;
     private SharedPreferences sharedPreferences;
 
     @Nullable
@@ -66,10 +65,8 @@ public class TareasListaFragment extends Fragment {
         rv.setAdapter(adapter);
 
         aniadirTarea = view.findViewById(R.id.aniadirTareaBoton);
-        eliminarTareasCompletadas = view.findViewById(R.id.eliminarTareasCompletadas);
 
         aniadirTarea.setOnClickListener(v -> mostrarDialogoNuevaTarea());
-        eliminarTareasCompletadas.setOnClickListener(v -> mostrarDialogoConfirmacionEliminar());
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -89,14 +86,6 @@ public class TareasListaFragment extends Fragment {
         cargarTareasDeFirestore();
     }
 
-    private void mostrarDialogoConfirmacionEliminar() {
-        new AlertDialog.Builder(getContext())
-                .setTitle("Confirmar eliminación")
-                .setMessage("¿Quieres eliminar todas las tareas completadas de la lista?")
-                .setPositiveButton("Sí", (dialog, which) -> eliminarTareasCompletadas())
-                .setNegativeButton("No", null)
-                .show();
-    }
 
     private void eliminarTareasCompletadas() {
         List<Tarea> tareasAEliminar = new ArrayList<>();

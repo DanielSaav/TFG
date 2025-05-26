@@ -18,7 +18,7 @@ import android.view.ViewGroup;
 
 public class AjustesFragment extends Fragment {
 
-    private Switch switchModoOscuro;
+    private Switch switchModoOscuro, switchMostrarCompletadas, switchTareasFueraPlazo;
     private Spinner fuenteSpinner;
 
     @Nullable
@@ -36,16 +36,19 @@ public class AjustesFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         switchModoOscuro = view.findViewById(R.id.modo_oscuro);
+        switchMostrarCompletadas = view.findViewById(R.id.mostrarTareasCompletadas);
         fuenteSpinner = view.findViewById(R.id.spinner);
-
+switchTareasFueraPlazo = view.findViewById(R.id.mostrarTareasFueraPlazo);
+        // Obtener las preferencias
         SharedPreferences prefs = requireActivity().getSharedPreferences("modo_tema", Context.MODE_PRIVATE);
-        boolean modoOscuroActivado = prefs.getBoolean("modo_oscuro", false);
+        SharedPreferences.Editor editor = prefs.edit();
 
+        // ---------- Switch Modo Oscuro ----------
+        boolean modoOscuroActivado = prefs.getBoolean("modo_oscuro", false);
         switchModoOscuro.setChecked(modoOscuroActivado);
         switchModoOscuro.setText(modoOscuroActivado ? "Modo oscuro" : "Modo claro");
 
         switchModoOscuro.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            SharedPreferences.Editor editor = prefs.edit();
             editor.putBoolean("modo_oscuro", isChecked);
             editor.apply();
 
@@ -54,10 +57,16 @@ public class AjustesFragment extends Fragment {
             );
         });
 
+        // ---------- Switch Mostrar Tareas Completadas ----------
+        boolean mostrarCompletadas = prefs.getBoolean("mostrar_completadas", true);
+        switchMostrarCompletadas.setChecked(mostrarCompletadas);
 
+        switchMostrarCompletadas.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            editor.putBoolean("mostrar_completadas", isChecked);
+            editor.apply();
+        });
 
-
-        // Configurar el Spinner con el array de fuentes
+        // ---------- Spinner Fuentes ----------
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 requireContext(),
                 R.array.lista_fuentes,
@@ -66,7 +75,7 @@ public class AjustesFragment extends Fragment {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         fuenteSpinner.setAdapter(adapter);
 
-        // Cargar selección guardada
+        // Cargar la fuente guardada
         String fuenteSeleccionada = prefs.getString("fuente", "Arial");
         int posicion = adapter.getPosition(fuenteSeleccionada);
         fuenteSpinner.setSelection(posicion);
@@ -76,11 +85,8 @@ public class AjustesFragment extends Fragment {
             @Override
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 String fuente = parent.getItemAtPosition(position).toString();
-                SharedPreferences.Editor editor = prefs.edit();
                 editor.putString("fuente", fuente);
                 editor.apply();
-
-
             }
 
             @Override
@@ -90,3 +96,5 @@ public class AjustesFragment extends Fragment {
         });
     }
 }
+
+

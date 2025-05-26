@@ -53,12 +53,14 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         View v = LayoutInflater.from(ctx).inflate(R.layout.item_tarea, parent, false);
         return new TareaViewHolder(v);
     }
+
     @Override
     public void onBindViewHolder(@NonNull TareaViewHolder holder, int position) {
         Tarea t = lista.get(position);
         holder.tvTitulo.setText(t.getTitulo());
-        holder.tvCorreo.setText("Correo: " + t.getCorreoUsuario());
         holder.tvFechaHora.setText("Límite: " + t.getFechaLimite() + " | " + t.getHoraLimite());
+
+        boolean fechaLimitePasada = false;
 
         try {
             String[] fechaPartes = t.getFechaLimite().split("/");
@@ -74,8 +76,6 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             fechaLimite.set(anio, mes, dia, hora, minuto, 0);
 
             Calendar ahora = Calendar.getInstance();
-
-            boolean fechaLimitePasada = false;
 
             Calendar hoyInicio = Calendar.getInstance();
             hoyInicio.set(Calendar.HOUR_OF_DAY, 0);
@@ -118,8 +118,6 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
                 holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
             }
 
-
-
         } catch (Exception e) {
             // Si hay error, fondo blanco
             holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
@@ -127,7 +125,9 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
 
         // Botón completar
         holder.btnCompletar.setText("✓");
-        if ("Sí".equalsIgnoreCase(t.getCompletado())) {
+
+        // Deshabilitar si ya completada o si fecha límite pasada
+        if ("Sí".equalsIgnoreCase(t.getCompletado()) || fechaLimitePasada) {
             holder.btnCompletar.setEnabled(false);
             holder.btnCompletar.setAlpha(0.5f);
         } else {
@@ -136,7 +136,7 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             holder.btnCompletar.setOnClickListener(v -> marcarComoCompletada(t, position));
         }
 
-        // Evento de clic
+        // Evento de clic para editar
         holder.itemView.setOnClickListener(v -> mostrarDialogoEditar(t, position));
     }
 
@@ -238,33 +238,40 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
                 Calendar fechaSeleccionada = Calendar.getInstance();
                 fechaSeleccionada.set(anio, mes, dia, hora, minuto, 0);
 
-                Calendar fechaActual = Calendar.getInstance();
+                Calendar ahora = Calendar.getInstance();
 
-                if (fechaSeleccionada.before(fechaActual)) {
-                    Toast.makeText(ctx, "La fecha y hora no pueden ser anteriores a la actual", Toast.LENGTH_LONG).show();
+                if (fechaSeleccionada.before(ahora)) {
+                    Toast.makeText(ctx, "No puedes seleccionar una fecha/hora pasada", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                // Actualizar tarea si la fecha es válida
-                FirebaseFirestore.getInstance()
-                        .collection("usuarios")
-                        .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                        .collection("tareas")
-                        .document(tarea.getId())
-                        .update("titulo", nuevoTitulo, "fechaLimite", nuevaFecha, "horaLimite", nuevaHora)
-                        .addOnSuccessListener(aVoid -> {
-                            tarea.setTitulo(nuevoTitulo);
-                            tarea.setFechaLimite(nuevaFecha);
-                            tarea.setHoraLimite(nuevaHora);
-                            notifyItemChanged(position);
-                            Toast.makeText(ctx, "Tarea actualizada", Toast.LENGTH_SHORT).show();
-                            dialog.dismiss();
-                        })
-                        .addOnFailureListener(e -> Toast.makeText(ctx, "Error al actualizar", Toast.LENGTH_SHORT).show());
-
             } catch (Exception e) {
-                Toast.makeText(ctx, "Fecha u hora no válida", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ctx, "Formato de fecha/hora incorrecto", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            if (nuevoTitulo.isEmpty()) {
+                Toast.makeText(ctx, "El título no puede estar vacío", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            FirebaseFirestore.getInstance()
+                    .collection("usuarios")
+                    .document(FirebaseAuth.getInstance().getCurrentUser().getUid())
+                    .collection("tareas")
+                    .document(tarea.getId())
+                    .update("titulo", nuevoTitulo, "fechaLimite", nuevaFecha, "horaLimite", nuevaHora)
+                    .addOnSuccessListener(aVoid -> {
+                        tarea.setTitulo(nuevoTitulo);
+                        tarea.setFechaLimite(nuevaFecha);
+                        tarea.setHoraLimite(nuevaHora);
+                        notifyItemChanged(position);
+                        Toast.makeText(ctx, "Tarea actualizada", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(ctx, "Error al actualizar tarea", Toast.LENGTH_SHORT).show();
+                    });
         });
 
         btnCancelar.setOnClickListener(v -> dialog.dismiss());
@@ -279,34 +286,35 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
                     .addOnSuccessListener(aVoid -> {
                         lista.remove(position);
                         notifyItemRemoved(position);
+                        notifyItemRangeChanged(position, lista.size());
                         Toast.makeText(ctx, "Tarea eliminada", Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     })
-                    .addOnFailureListener(e -> Toast.makeText(ctx, "Error al eliminar", Toast.LENGTH_SHORT).show());
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(ctx, "Error al eliminar tarea", Toast.LENGTH_SHORT).show();
+                    });
         });
 
         dialog.show();
     }
+
 
     @Override
     public int getItemCount() {
         return lista.size();
     }
 
-    static class TareaViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitulo, tvCorreo, tvFechaHora;
+    public static class TareaViewHolder extends RecyclerView.ViewHolder {
+        TextView tvTitulo, tvFechaHora;
         Button btnCompletar;
-
         View rootLayout;
 
         public TareaViewHolder(@NonNull View itemView) {
             super(itemView);
             tvTitulo = itemView.findViewById(R.id.tvTitulo);
-            tvCorreo = itemView.findViewById(R.id.tvCorreo);
             tvFechaHora = itemView.findViewById(R.id.tvFechaHora);
             btnCompletar = itemView.findViewById(R.id.btnCompletar);
-            rootLayout = itemView;  // Aquí usamos el itemView completo para cambiar fondo
+            rootLayout = itemView.findViewById(R.id.rootLayout);
         }
-
     }
 }
