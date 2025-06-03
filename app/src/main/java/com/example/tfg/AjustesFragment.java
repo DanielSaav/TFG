@@ -19,7 +19,6 @@ import android.view.ViewGroup;
 public class AjustesFragment extends Fragment {
 
     private Switch switchModoOscuro, switchMostrarCompletadas, switchTareasFueraPlazo;
-    private Spinner fuenteSpinner;
 
     @Nullable
     @Override
@@ -37,7 +36,7 @@ public class AjustesFragment extends Fragment {
 
         switchModoOscuro = view.findViewById(R.id.modo_oscuro);
         switchMostrarCompletadas = view.findViewById(R.id.mostrarTareasCompletadas);
-        fuenteSpinner = view.findViewById(R.id.spinner);
+
 switchTareasFueraPlazo = view.findViewById(R.id.mostrarTareasFueraPlazo);
         // Obtener las preferencias
         SharedPreferences prefs = requireActivity().getSharedPreferences("modo_tema", Context.MODE_PRIVATE);
@@ -73,27 +72,15 @@ switchTareasFueraPlazo = view.findViewById(R.id.mostrarTareasFueraPlazo);
                 android.R.layout.simple_spinner_item
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        fuenteSpinner.setAdapter(adapter);
+
 
         // Cargar la fuente guardada
         String fuenteSeleccionada = prefs.getString("fuente", "Arial");
         int posicion = adapter.getPosition(fuenteSeleccionada);
-        fuenteSpinner.setSelection(posicion);
+
 
         // Guardar nueva selección
-        fuenteSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                String fuente = parent.getItemAtPosition(position).toString();
-                editor.putString("fuente", fuente);
-                editor.apply();
-            }
 
-            @Override
-            public void onNothingSelected(android.widget.AdapterView<?> parent) {
-                // Nada
-            }
-        });
     }
 }
 
