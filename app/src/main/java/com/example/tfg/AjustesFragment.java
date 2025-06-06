@@ -78,7 +78,6 @@ switchTareasFueraPlazo = view.findViewById(R.id.mostrarTareasFueraPlazo);
         String fuenteSeleccionada = prefs.getString("fuente", "Arial");
         int posicion = adapter.getPosition(fuenteSeleccionada);
 
-
         // Guardar nueva selección
 
     }

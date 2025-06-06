@@ -4,6 +4,7 @@
         <item name="colorSurface">@color/dark_gray</item>
         <item name="logoSilencio" format="reference">@drawable/logosilencioscuro</item>
         <item name="colorRojo">@color/maroon</item>
+        <item name="inverseColorSurface">@color/light_gray</item>
     </style>
 
 </resources>

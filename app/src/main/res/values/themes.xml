@@ -6,6 +6,7 @@
         <item name="colorSurface">@color/light_gray</item>
         <item name="logoSilencio" format="reference">@drawable/imagesilencioclaro</item>
         <item name="colorRojo">@color/ligth_red</item>
+        <item name="inverseColorSurface">@color/dark_gray</item>
     </style>
 
     <style name="Theme.TFG" parent="Base.Theme.TFG" />

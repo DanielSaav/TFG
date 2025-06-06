@@ -19,7 +19,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
-public class LogrosFragment extends Fragment {
+public class EstadisticasFragment extends Fragment {
 
     private TextView tareasCompletadasText;
     private TextView tareasPendientesText;
@@ -32,7 +32,7 @@ public class LogrosFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_logros, container, false);
+        View view = inflater.inflate(R.layout.fragment_estadisticas, container, false);
 
         tareasCompletadasText = view.findViewById(R.id.textView5);
         tareasPendientesText = view.findViewById(R.id.textView6);

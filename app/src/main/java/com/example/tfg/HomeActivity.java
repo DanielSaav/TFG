@@ -88,7 +88,7 @@ public class HomeActivity extends AppCompatActivity {
             } else if (id == R.id.ajustes) {
                 fragment = new AjustesFragment();
             } else if (id == R.id.logros) {
-                fragment = new LogrosFragment();
+                fragment = new EstadisticasFragment();
             }
 
             if (fragment != null) {
