@@ -32,7 +32,7 @@ import com.google.firebase.storage.StorageReference;
 public class PerfilFragment extends Fragment {
 
     private ImageView imageView;
-    private TextView tvEmail, tvNombre, tvPuntos;
+    private TextView tvEmail, tvNombre;
     private Button cambiarDatos, eliminarCuenta;
     private Uri selectedImageUri;
 
@@ -65,7 +65,7 @@ public class PerfilFragment extends Fragment {
         imageView = view.findViewById(R.id.imageView);
         tvEmail = view.findViewById(R.id.textView);
         tvNombre = view.findViewById(R.id.textView2);
-        tvPuntos = view.findViewById(R.id.textView9);
+
         cambiarDatos = view.findViewById(R.id.cambiarDatos);
         eliminarCuenta = view.findViewById(R.id.eliminarCuenta);
 
@@ -119,22 +119,22 @@ public class PerfilFragment extends Fragment {
             tvNombre.setText(nombre);
         }
 
-        if (doc.contains("fotoPerfil")) {
-            String url = doc.getString("fotoPerfil");
-            if (url != null && !url.isEmpty()) {
-                Glide.with(this)
-                        .load(url)
-                        .circleCrop()
-                        .transition(DrawableTransitionOptions.withCrossFade())
-                        .into(imageView);
-            }
+        // Mostrar imagen por defecto si no hay foto en Firestore
+        if (!doc.contains("fotoPerfil")) {
+            imageView.setImageResource(R.drawable.sin_imagen);
+            return;
         }
 
-        if (doc.contains("puntos")) {
-            long puntos = doc.getLong("puntos") != null ? doc.getLong("puntos") : 0;
-            tvPuntos.setText(String.valueOf(puntos));
+        String url = doc.getString("fotoPerfil");
+        if (url != null && !url.isEmpty()) {
+            Glide.with(this)
+                    .load(url)
+                    .circleCrop()
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .error(R.drawable.sin_imagen) // Esto muestra sin_imagen si hay error al cargar
+                    .into(imageView);
         } else {
-            tvPuntos.setText("0");
+            imageView.setImageResource(R.drawable.sin_imagen);
         }
     }
 
@@ -220,6 +220,7 @@ public class PerfilFragment extends Fragment {
 
     private void onImagePicked(ActivityResult result) {
         if (result.getResultCode() != requireActivity().RESULT_OK || result.getData() == null) {
+            imageView.setImageResource(R.drawable.sin_imagen); // Mostrar imagen por defecto si se cancela
             return;
         }
 
@@ -229,14 +230,15 @@ public class PerfilFragment extends Fragment {
                     .load(selectedImageUri)
                     .circleCrop()
                     .transition(DrawableTransitionOptions.withCrossFade())
+                    .error(R.drawable.sin_imagen) // Muestra sin_imagen si hay error al cargar
                     .into(imageView);
 
             requireActivity().getSharedPreferences("perfil_prefs", getContext().MODE_PRIVATE)
                     .edit()
                     .putString("foto_uri", selectedImageUri.toString())
                     .apply();
-
-            // Aquí puedes añadir la subida a Firebase Storage si quieres
+        } else {
+            imageView.setImageResource(R.drawable.sin_imagen);
         }
     }
 

@@ -53,21 +53,25 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
         View v = LayoutInflater.from(ctx).inflate(R.layout.item_tarea, parent, false);
         return new TareaViewHolder(v);
     }
-
     @Override
     public void onBindViewHolder(@NonNull TareaViewHolder holder, int position) {
         Tarea t = lista.get(position);
         holder.tvTitulo.setText(t.getTitulo());
         holder.tvFechaHora.setText("Límite: " + t.getFechaLimite() + " | " + t.getHoraLimite());
 
+        // Obtener preferencias
+        boolean mostrarFueraDePlazo = sharedPreferences.getBoolean("mostrar_fuera_plazo", true);
+        boolean mostrarCompletadas = sharedPreferences.getBoolean("mostrar_completadas", true);
         boolean fechaLimitePasada = false;
+        boolean esCompletada = "Sí".equalsIgnoreCase(t.getCompletado());
 
+        // Verificar si la tarea está fuera de plazo
         try {
             String[] fechaPartes = t.getFechaLimite().split("/");
             String[] horaPartes = t.getHoraLimite().split(":");
 
             int dia = Integer.parseInt(fechaPartes[0]);
-            int mes = Integer.parseInt(fechaPartes[1]) - 1; // Mes en 0-11
+            int mes = Integer.parseInt(fechaPartes[1]) - 1;
             int anio = Integer.parseInt(fechaPartes[2]);
             int hora = Integer.parseInt(horaPartes[0]);
             int minuto = Integer.parseInt(horaPartes[1]);
@@ -75,73 +79,56 @@ public class TareasAdapter extends RecyclerView.Adapter<TareasAdapter.TareaViewH
             Calendar fechaLimite = Calendar.getInstance();
             fechaLimite.set(anio, mes, dia, hora, minuto, 0);
 
-            Calendar ahora = Calendar.getInstance();
+            fechaLimitePasada = fechaLimite.before(Calendar.getInstance());
+        } catch (Exception e) {
+            fechaLimitePasada = false;
+        }
 
-            Calendar hoyInicio = Calendar.getInstance();
-            hoyInicio.set(Calendar.HOUR_OF_DAY, 0);
-            hoyInicio.set(Calendar.MINUTE, 0);
-            hoyInicio.set(Calendar.SECOND, 0);
-            hoyInicio.set(Calendar.MILLISECOND, 0);
+        // Configurar visibilidad según preferencias
+        boolean debeMostrarse = true;
 
-            Calendar hoyFin = Calendar.getInstance();
-            hoyFin.set(Calendar.HOUR_OF_DAY, 23);
-            hoyFin.set(Calendar.MINUTE, 59);
-            hoyFin.set(Calendar.SECOND, 59);
-            hoyFin.set(Calendar.MILLISECOND, 999);
-
-            if (fechaLimite.before(hoyInicio)) {
-                fechaLimitePasada = true;
-            } else if (fechaLimite.after(hoyFin)) {
-                fechaLimitePasada = false;
+        if (fechaLimitePasada && !esCompletada) {
+            if (!mostrarFueraDePlazo) {
+                debeMostrarse = false;
             } else {
-                if (fechaLimite.before(ahora)) {
-                    fechaLimitePasada = true;
-                }
-            }
-
-            if (fechaLimitePasada) {
-                // Cambiar fondo a rojo
+                // Cambiar fondo a rojo si está fuera de plazo
                 TypedValue typedValue = new TypedValue();
                 Context context = holder.itemView.getContext();
                 context.getTheme().resolveAttribute(R.attr.colorRojo, typedValue, true);
                 holder.rootLayout.setBackgroundColor(typedValue.data);
-
-                // Verificar si ya se notificó
-                boolean yaNotificada = sharedPreferences.getBoolean(t.getTitulo(), false);
-
-                if (!"Sí".equalsIgnoreCase(t.getCompletado()) && !yaNotificada) {
-                    mostrarNotificacion("Tarea fuera de plazo", "La tarea \"" + t.getTitulo() + "\" ha pasado su fecha límite.");
-                    editor.putBoolean(t.getTitulo(), true);  // Marcar como notificada
-                    editor.apply();
-                }
-            } else {
-                holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
             }
-
-        } catch (Exception e) {
-            // Si hay error, fondo blanco
+        } else if (esCompletada && !mostrarCompletadas) {
+            debeMostrarse = false;
+        } else {
+            // Fondo normal (blanco) para tareas dentro de plazo
             holder.rootLayout.setBackgroundColor(holder.itemView.getContext().getResources().getColor(android.R.color.white));
         }
 
-        // Botón completar
-        holder.btnCompletar.setText("✓");
-
-        // Deshabilitar si ya completada o si fecha límite pasada
-        if ("Sí".equalsIgnoreCase(t.getCompletado()) || fechaLimitePasada) {
-            holder.btnCompletar.setEnabled(false);
-            holder.btnCompletar.setAlpha(0.5f);
+        // Aplicar visibilidad
+        if (!debeMostrarse) {
+            holder.itemView.setVisibility(View.GONE);
+            holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(0, 0));
         } else {
-            holder.btnCompletar.setEnabled(true);
-            holder.btnCompletar.setAlpha(1f);
-            holder.btnCompletar.setOnClickListener(v -> marcarComoCompletada(t, position));
+            holder.itemView.setVisibility(View.VISIBLE);
+            holder.itemView.setLayoutParams(new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
         }
 
-        // Evento de clic para editar
+        // Configurar botón de completar
+        holder.btnCompletar.setText("✓");
+        holder.btnCompletar.setEnabled(!esCompletada && !fechaLimitePasada);
+        holder.btnCompletar.setAlpha((esCompletada || fechaLimitePasada) ? 0.5f : 1f);
+
+        if (!esCompletada && !fechaLimitePasada) {
+            holder.btnCompletar.setOnClickListener(v -> marcarComoCompletada(t, position));
+        } else {
+            holder.btnCompletar.setOnClickListener(null);
+        }
+
+        // Configurar clic para editar
         holder.itemView.setOnClickListener(v -> mostrarDialogoEditar(t, position));
     }
-
-
-
     private void mostrarNotificacion(String titulo, String mensaje) {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(ctx, "canal_tareas")
                 .setSmallIcon(R.drawable.images__3_) // Usa un icono que tengas en res/drawable

@@ -44,6 +44,7 @@
         android:scaleX="1.5"
         android:scaleY="1.5"
         android:text="Mostrar tareas fuera de plazo"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.188"
